@@ -4,8 +4,8 @@ Program na na celu zaprezentować użycie algorytmu FastICA na danych EEG ma na 
 
 ## Wykorzystane bibloteki
 
-* ###[scikit-learn](https://scikit-learn.org/stable/index.html)
-* ###[matplot-lib](https://matplotlib.org/)
+* [scikit-learn](https://scikit-learn.org/stable/index.html)
+* [matplot-lib](https://matplotlib.org/)
 
 ## Instrukcja użycia
 ``python main.py [-h] -i INPUT -of OUT_FILE_PATH [-oc OUT_CHART_PATH] [--header HEADER] -n N -m M [-f {logcosh,exp,cube}] [-c CHART]``
