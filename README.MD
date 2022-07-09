@@ -10,31 +10,40 @@ Program na na celu zaprezentować użycie algorytmu FastICA na danych EEG ma na 
 ## Instrukcja użycia
 ``python main.py [-h] -i INPUT -of OUT_FILE_PATH [-oc OUT_CHART_PATH] [--header HEADER] -n N -m M [-f {logcosh,exp,cube}] [-c CHART]``
 
-`-h, --help`pokazuje intrukcje obsługi w języku angielskim
+* `-h, --help` Shows help for script  
 
-```-i INPUT, --input INPUT  ``` ścieżka do pliku wejściowego
 
-  ```-of OUT_FILE_PATH, --out-file-path OUT_FILE_PATH``` output file path. If exist will be overwritten.
+* ```-i INPUT, --input INPUT  ``` Path to input file  
 
-  ```-oc OUT_CHART_PATH, --out-chart-path OUT_CHART_PATH``` output directory path for charts
 
-  ```--header HEADER``` Bool flag if file has headers.
+* ```-of OUT_FILE_PATH, --out-file-path OUT_FILE_PATH``` Output file path. If exist will be overwritten.
 
-  `-n N`  liczba kolumn w pliku źródłowym
 
-  `-m M` liczba wierszy w pliku źródłowym (nie licząc nagłówka jeżeli istnieje)  
+* ```-oc OUT_CHART_PATH, --out-chart-path OUT_CHART_PATH``` Output directory path for charts
 
-  `-f {logcosh,exp,cube}, --fun {logcosh,exp,cube} ` 
-                        The functional form of the G function used in the approximation to neg-entropy
 
-  `-c CHART, --chart CHART`
-                        Flaga bool decydująca o zapisaniu wykresów do folderu podanego w `-oc`  
+* ```--header HEADER``` Bool flag if file has headers.
 
-### Przykład
+
+* `-n N`  Number of columns in input file.
+
+
+* `-m M` Number of rows in input file. (Not counting the header if it exists)  
+
+
+* `-f {logcosh,exp,cube}, --fun {logcosh,exp,cube} ` 
+                       The functional form of the G function used in the approximation to neg-entropy
+
+* `-c CHART, --chart CHART`
+                        Bool flag that decides to save chart to out char path specified  in `-oc` (`--out-chart-path`)
+
+### Example
 
 `python fastEEG.py -i resources/data2x100.csv  -oc resources/ -n 2 -m 100 -f logcosh -c True -of resources/data2x100_out.csv`
 
-Przed wykonaniem algorytmu  Mieszanina sygnałów – rozkład wartości 
+####Before the execution of the algorithm.  
+Signal mixture - distribution of values 
 ![](doc/pictures/Before2_data2x100.png)  
-Po wykonaniu algorytmu uzyskujemy odseparowane źródła. 
+####After executing the algorithm
+We obtain separated sources.
 ![](doc/pictures/After2_data2x100.png)
