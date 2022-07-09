@@ -23,7 +23,7 @@ def savePlot1(frame, title, dirPath, fileName):
     Y = frame.iloc[:, 1]
 
     plt.title(title)
-    plt.scatter(X, Y)
+    plt.scatter(X, Y, 1)
     filePath = os.path.join(dirPath, fileName)
     plt.savefig(filePath)
 
@@ -45,9 +45,8 @@ class EEGFastICA:
     def __init__(self, raw, args):
         self.raw = raw
         self.fun = args.fun
-        self.raw_ica = None
         self.args = args
-
+        self.result = None
     def run(self):
         # https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.FastICA.html#examples-using-sklearn-decomposition-fastica
         transformer = FastICA(random_state=97,
@@ -56,38 +55,27 @@ class EEGFastICA:
                               max_iter=50000000)
         self.data_before = pd.DataFrame(self.raw.get_data()[:args.n]).T
         self.date_after = pd.DataFrame(transformer.fit_transform(self.data_before))
-
-    def run2(self):
-        # https://mne.tools/stable/generated/mne.preprocessing.ICA.html
-        import mne
-        ica = mne.preprocessing.ICA(random_state=97)
-        raw = self.raw.copy()
-        ica.fit(raw)
-        result = ica.apply(raw)
-        self.raw_ica = raw.copy()
+        self.result = self.date_after
 
 
 
     def getResult(self):
-        return self.raw_ica
+        return self.result
 
     def saveResultToFile(self, filePath, header=False):
-        if self.raw_ica is None:
+        if self.result is None:
             return
-        self.raw_ica.to_csv(filePath, header=header)
+        self.result.to_csv(filePath, header=header)
 
     def saveChartsToFile(self, dirPath, fileName, N, M):
-        # rows = raw.get_data()[:args.n]
-        # frame = pd.DataFrame(rows, raw.ch_names[0:args.n])
-        # frame_transpose = frame.T
         data_before = self.data_before
         data_after = self.date_after
         if N == 2:
-            savePlot1(data_before, f"Before {N}x{M}", dirPath, "Before1_" + fileName)
-            savePlot1(data_after, f"After {N}x{M}", dirPath, "After1_" + fileName)
+            savePlot1(data_before, f"Before {N}x{M} with function {self.fun}", dirPath, "Before1_mff" + fileName)
+            savePlot1(data_after, f"After {N}x{M} with function {self.fun} ", dirPath, "After1_" + fileName)
 
-        savePlot2(data_before, f"Before {N}x{M}", dirPath, "Before2_" + fileName)
-        savePlot2(data_after, f"After {N}x{M}", dirPath, "After2_" + fileName)
+        savePlot2(data_before, f"Before {N}x{M} with function {self.fun} ", dirPath, "Before2_mff" + fileName)
+        savePlot2(data_after, f"After {N}x{M} with function {self.fun} ", dirPath, "After2_mff" + fileName)
 
 
 class ParserPreparation:
@@ -99,7 +87,7 @@ class ParserPreparation:
                              required=True, type=str)
         _parser.add_argument("-oc", "--out-chart-path", help="output directory path for charts",
                              required=False, type=str)
-        _parser.add_argument("--header", type=bool, default=False, help="Bool flag if file has headers.")
+        _parser.add_argument("--header", type=bool, default=False,  help="Bool flag if file has headers.")
         _parser.add_argument("-n", help="number of columns", required=True, type=int)
         _parser.add_argument("-m", help="number of rows", required=True, type=int)
         _parser.add_argument("-f", "--fun", required=False, default="logcosh",
@@ -108,41 +96,93 @@ class ParserPreparation:
         _parser.add_argument("-c", "--chart", help="Bool flag to decide whether to save the graphical chart",
                              default=True, required=False, type=bool)
 
+        _parser.add_argument("-b", "--begin-time", help="Start time of the raw data to use in seconds (must be >= 0).",
+                             required=False, type=int, default=25, const=25, nargs='?')
+        _parser.add_argument("-e", "--end-time", help="End time of the raw data to use in seconds (cannot exceed "
+                                                      "data duration).", default=65, const=65, nargs='?',
+                             required=False, type=int)
+        _parser.add_argument("-s", "--sfreq", help="New sample rate to use.",
+                             required=False, type=int, default=None, const=64, nargs='?')
+
+        _parser.add_argument("-fmin", "--frequency-min", help="Minimum value of filtering frequency",
+                             required=False, type=int, default=1, const=1, nargs='?')
+        _parser.add_argument("-fmax", "--frequency-max", help="Max value of filtering frequency",
+                             required=False, type=int, default=45, const=45, nargs='?')
+
+        _parser.add_argument("-v", "--verbose", help="Control verbosity of the logging output. If None, use the "
+                                                     "default verbosity level.", type=bool, default=None,
+                             nargs='?', required=False, const=True)
+        _parser.add_argument('-ce', '--chart-extension', help="Chart extension",
+                             type=str, default="eps", const="eps", nargs='?')
+
+
         self._args = _parser.parse_args()
 
     def getArgs(self):
         return self._args
 
 
-if __name__ == '__main__':
-    argParser = ParserPreparation()
-    args = argParser.getArgs()
+def read_raw_file(args):
     file = args.input
-    fun = args.fun
     raw = mne.io.read_raw(file)
     raw = raw.pick_types(meg=False, eeg=True, eog=False)
     raw.load_data()
-    raw.crop(25, 35)
-    raw.filter(1, 45)
+    return raw
 
-    raw.resample(sfreq=64)
+
+def cropData(raw, args):
+    tmin = args.begin_time
+    tmax = args.end_time
+    raw.crop(tmin, tmax)
+    return raw
+
+def filterData(raw, args):
+    fmin = args.frequency_min
+    fmax = args.frequency_max
+    raw.filter(fmin, fmax)
+    return raw
+
+
+def cleanData(raw):
     nc = pyprep.NoisyChannels(raw)
     nc.find_all_bads()
     raw.info['bads'] = nc.get_bads()
     raw.interpolate_bads()
+    return raw
 
 
+def performICA(raw):
     eeg = EEGFastICA(raw, args)
     eeg.run()
+    return raw, eeg
+
+
+if __name__ == '__main__':
+    argParser = ParserPreparation()
+    args = argParser.getArgs()
+    raw = read_raw_file(args)
+    raw = cropData(raw, args)
+    raw = filterData(raw, args)
+
+    if args.sfreq:
+        raw.resample(sfreq=args.sfreq)
+
+    raw = cleanData(raw)
+
+    raw, eeg = performICA(raw)
+
+    outChartDir = args.out_chart_path
+    if not os.path.exists(outChartDir):
+        os.makedirs(outChartDir)
 
     outResultFilePath = args.out_file_path
-    outChartDir = args.out_chart_path
     eeg.saveResultToFile(outResultFilePath, args.header)
 
     # FileName without extension
     fileName = os.path.basename(args.input).split(".")[0]
+
     if args.chart:
-        eeg.saveChartsToFile(outChartDir, fileName+f"_{fun}_" + ".png", args.n, args.m)
+        eeg.saveChartsToFile(outChartDir, fileName + f"_{args.fun}_" + ".png", args.n, args.m)
 
     # eeg.run()
     pass

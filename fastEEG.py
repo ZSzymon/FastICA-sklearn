@@ -54,23 +54,23 @@ class EEGFastICA:
 
 
 
-
-
     def getResult(self):
         return self.X_transformed_df
 
     def saveResultToFile(self, filePath, header=False):
         if self.X_transformed_df is None:
             return
+
         self.X_transformed_df.to_csv(filePath, header=header)
 
     def saveChartsToFile(self, dirPath, fileName, N, M):
+
         if N == 2:
-            savePlot1(self.frame, f"Before {N}x{M}", dirPath, "Before1_" + fileName)
+            savePlot1(self.frame, f"Before {N}x{M} with function: {self.fun}", dirPath, "Before1_" + fileName)
             savePlot1(self.X_transformed_df, f"After {N}x{M}", dirPath, "After1_" + fileName)
 
-        savePlot2(self.frame, f"Before {N}x{M}", dirPath, "Before2_" + fileName)
-        savePlot2(self.X_transformed_df, f"After {N}x{M}", dirPath, "After2_" + fileName)
+        savePlot2(self.frame, f"Before {N}x{M} with function: {self.fun}", dirPath, "Before2_" + fileName)
+        savePlot2(self.X_transformed_df, f"After {N}x{M} with function: {self.fun}", dirPath, "After2_" + fileName)
 
 
 class ParserPreparation:
@@ -101,12 +101,16 @@ if __name__ == '__main__':
     argParser = ParserPreparation()
 
     args = argParser.getArgs()
+
     file = os.path.join(args.input)
     fun = args.fun
     eeg = EEGFastICA(getFrame(file), fun)
     eeg.run()
     outResultFilePath = args.out_file_path
     outChartDir = args.out_chart_path
+    if not os.path.exists(outChartDir):
+        os.makedirs(outChartDir)
+
     eeg.saveResultToFile(outResultFilePath, args.header)
 
     # FileName without extension

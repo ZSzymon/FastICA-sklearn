@@ -31,7 +31,6 @@ class ParserPreparation:
         optional.add_argument("-e", "--end-time", help="End time of the raw data to use in seconds (cannot exceed "
                                                        "data duration).",
                               required=False, type=int)
-
         optional.add_argument("-s", "--sfreq", help="New sample rate to use.",
                               required=False, type=int, default=None, const=256, nargs='?')
 
@@ -41,7 +40,7 @@ class ParserPreparation:
                               required=False, type=int, default=45, const=45, nargs='?')
 
         optional.add_argument("-v", "--verbose", help="Control verbosity of the logging output. If None, use the "
-                                                      "default verbosity level.", type=bool, default=False,
+                                                      "default verbosity level.", type=bool, default=None,
                               nargs='?', required=False, const=True)
         optional.add_argument('-ce', '--chart-extension', help="Chart extension",
                               type=str, default="eps", const="eps", nargs='?')
