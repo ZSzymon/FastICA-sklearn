@@ -3,3 +3,4 @@ resources
 **result**
 *.eps
 *.png
+out/**
