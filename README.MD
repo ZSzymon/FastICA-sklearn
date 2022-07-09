@@ -1,13 +1,13 @@
-# Analiza szeregów czasowych w spektrum niezależnych składowych
+# Analysis of time series in the spectrum of independent components
 
-Program na na celu zaprezentować użycie algorytmu FastICA na danych EEG ma na celu wykonać slepą separacje źródeł aktywności korowej mózgu.
+The program aims to demonstrate the use of the FastICA algorithm on EEG data is to perform blind source separation of cortical brain activity.
 
-## Wykorzystane bibloteki
+## Used libraries
 
 * [scikit-learn](https://scikit-learn.org/stable/index.html)
 * [matplot-lib](https://matplotlib.org/)
 
-## Instrukcja użycia
+## Use cases
 ``python main.py [-h] -i INPUT -of OUT_FILE_PATH [-oc OUT_CHART_PATH] [--header HEADER] -n N -m M [-f {logcosh,exp,cube}] [-c CHART]``
 
 * `-h, --help` Shows help for script  

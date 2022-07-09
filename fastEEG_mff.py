@@ -1,9 +1,12 @@
 import os
+
+import mne.io
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 
+import pyprep
 from sklearn.decomposition import FastICA
 
 
@@ -39,38 +42,52 @@ def savePlot2(frame, title, dirPath, fileName):
 
 class EEGFastICA:
 
-    def __init__(self, frame, fun="logcosh"):
-        self.frame = frame
-        self.fun = fun
-        self.X_transformed_df = None
+    def __init__(self, raw, args):
+        self.raw = raw
+        self.fun = args.fun
+        self.raw_ica = None
+        self.args = args
 
     def run(self):
         # https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.FastICA.html#examples-using-sklearn-decomposition-fastica
-        transformer = FastICA(random_state=0,
+        transformer = FastICA(random_state=97,
                               fun=self.fun,
-                              whiten='unit-variance')
-        X_transformed = transformer.fit_transform(self.frame)
-        self.X_transformed_df = pd.DataFrame(X_transformed)
+                              whiten='unit-variance',
+                              max_iter=50000000)
+        self.data_before = pd.DataFrame(self.raw.get_data()[:args.n]).T
+        self.date_after = pd.DataFrame(transformer.fit_transform(self.data_before))
 
-
+    def run2(self):
+        # https://mne.tools/stable/generated/mne.preprocessing.ICA.html
+        import mne
+        ica = mne.preprocessing.ICA(random_state=97)
+        raw = self.raw.copy()
+        ica.fit(raw)
+        result = ica.apply(raw)
+        self.raw_ica = raw.copy()
 
 
 
     def getResult(self):
-        return self.X_transformed_df
+        return self.raw_ica
 
     def saveResultToFile(self, filePath, header=False):
-        if self.X_transformed_df is None:
+        if self.raw_ica is None:
             return
-        self.X_transformed_df.to_csv(filePath, header=header)
+        self.raw_ica.to_csv(filePath, header=header)
 
     def saveChartsToFile(self, dirPath, fileName, N, M):
+        # rows = raw.get_data()[:args.n]
+        # frame = pd.DataFrame(rows, raw.ch_names[0:args.n])
+        # frame_transpose = frame.T
+        data_before = self.data_before
+        data_after = self.date_after
         if N == 2:
-            savePlot1(self.frame, f"Before {N}x{M}", dirPath, "Before1_" + fileName)
-            savePlot1(self.X_transformed_df, f"After {N}x{M}", dirPath, "After1_" + fileName)
+            savePlot1(data_before, f"Before {N}x{M}", dirPath, "Before1_" + fileName)
+            savePlot1(data_after, f"After {N}x{M}", dirPath, "After1_" + fileName)
 
-        savePlot2(self.frame, f"Before {N}x{M}", dirPath, "Before2_" + fileName)
-        savePlot2(self.X_transformed_df, f"After {N}x{M}", dirPath, "After2_" + fileName)
+        savePlot2(data_before, f"Before {N}x{M}", dirPath, "Before2_" + fileName)
+        savePlot2(data_after, f"After {N}x{M}", dirPath, "After2_" + fileName)
 
 
 class ParserPreparation:
@@ -99,12 +116,25 @@ class ParserPreparation:
 
 if __name__ == '__main__':
     argParser = ParserPreparation()
-
     args = argParser.getArgs()
-    file = os.path.join(args.input)
+    file = args.input
     fun = args.fun
-    eeg = EEGFastICA(getFrame(file), fun)
+    raw = mne.io.read_raw(file)
+    raw = raw.pick_types(meg=False, eeg=True, eog=False)
+    raw.load_data()
+    raw.crop(25, 35)
+    raw.filter(1, 45)
+
+    raw.resample(sfreq=64)
+    nc = pyprep.NoisyChannels(raw)
+    nc.find_all_bads()
+    raw.info['bads'] = nc.get_bads()
+    raw.interpolate_bads()
+
+
+    eeg = EEGFastICA(raw, args)
     eeg.run()
+
     outResultFilePath = args.out_file_path
     outChartDir = args.out_chart_path
     eeg.saveResultToFile(outResultFilePath, args.header)
@@ -114,4 +144,5 @@ if __name__ == '__main__':
     if args.chart:
         eeg.saveChartsToFile(outChartDir, fileName+f"_{fun}_" + ".png", args.n, args.m)
 
+    # eeg.run()
     pass
